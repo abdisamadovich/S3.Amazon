@@ -21,11 +21,11 @@ namespace S3.Amazon.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateBucketAsync(IFormFile file, string bucketName, string? prefix)
+        public async Task<IActionResult> CreateBucketAsync(IFormFile file, string? prefix)
         {
             var awsCredentials = new BasicAWSCredentials("AKIASTK663DBYPX4K26W", "zQEM9Db8KDxd7Lef35A/y7MMkULrK6A9PP8DJ8S1");
             var _s3Client = new AmazonS3Client(awsCredentials, RegionEndpoint.APSoutheast2);
-
+            string bucketName = "oxirgisi";
             var bucketExists = await AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, bucketName);
             if (!bucketExists) return NotFound($"Bucket {bucketName} does not exist.");
             var request = new PutObjectRequest()
@@ -36,6 +36,7 @@ namespace S3.Amazon.Api.Controllers
             };
             request.Metadata.Add("Content-Type", file.ContentType);
             await _s3Client.PutObjectAsync(request);
+
             return Ok($"File {prefix}/{file.FileName} uploaded to S3 successfully!");
         }
 
@@ -50,7 +51,6 @@ namespace S3.Amazon.Api.Controllers
             var request = new ListObjectsV2Request()
             {
                 BucketName = bucketName,
-
             };
             var result = await _s3Client.ListObjectsV2Async(request);
             var s3Objects = result.S3Objects.Select(s =>
@@ -61,40 +61,47 @@ namespace S3.Amazon.Api.Controllers
                     Key = s.Key,
                     Expires = DateTime.UtcNow.AddMinutes(1)
                 };
+
                 return new S3ObjectDto()
                 {
                     Name = s.Key.ToString(),
                     PresignedUrl = _s3Client.GetPreSignedURL(urlRequest),
                 };
             });
+
             return Ok(s3Objects);
         }
 
         [HttpGet("getByPath")]
-        public async Task<IActionResult> GetFileByKeyAsync(string bucketName, string key)
+        public async Task<IActionResult> GetFileByKeyAsync(string key)
         {
+            string bucketName = "oxirgisi";
             var awsCredentials = new BasicAWSCredentials("AKIASTK663DBYPX4K26W", "zQEM9Db8KDxd7Lef35A/y7MMkULrK6A9PP8DJ8S1");
             var _s3Client = new AmazonS3Client(awsCredentials, RegionEndpoint.APSoutheast2);
             var bucketExists = await AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, bucketName);
             if (!bucketExists) return NotFound($"Bucket {bucketName} does not exist.");
             var s3Object = await _s3Client.GetObjectAsync(bucketName, key);
+
             return File(s3Object.ResponseStream, s3Object.Headers.ContentType);
         }
 
         [HttpDelete]
-        public async Task<IActionResult> DeleteFileAsync(string bucketName, string key)
+        public async Task<IActionResult> DeleteFileAsync(string key)
         {
+            string bucketName = "oxirgisi";
             var awsCredentials = new BasicAWSCredentials("AKIASTK663DBYPX4K26W", "zQEM9Db8KDxd7Lef35A/y7MMkULrK6A9PP8DJ8S1");
             var _s3Client = new AmazonS3Client(awsCredentials, RegionEndpoint.APSoutheast2);
             var bucketExists = await AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, bucketName);
             if (!bucketExists) return NotFound($"Bucket {bucketName} does not exist");
             await _s3Client.DeleteObjectAsync(bucketName, key);
+
             return NoContent();
         }
 
         [HttpGet("download")]
-        public async Task<IActionResult> DownloadFileByKeyAsync(string bucketName, string key)
+        public async Task<IActionResult> DownloadFileByKeyAsync(string key)
         {
+            string bucketName = "oxirgisi";
             var awsCredentials = new BasicAWSCredentials("AKIASTK663DBYPX4K26W", "zQEM9Db8KDxd7Lef35A/y7MMkULrK6A9PP8DJ8S1");
             var _s3Client = new AmazonS3Client(awsCredentials, RegionEndpoint.APSoutheast2);
             var bucketExists = await AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, bucketName);
@@ -121,40 +128,40 @@ namespace S3.Amazon.Api.Controllers
             }
         }
 
-        [HttpPut("update")]
-        public async Task<IActionResult> UpdateFileByKeyAsync(IFormFile file, string bucketName, string key)
-        {
-            var awsCredentials = new BasicAWSCredentials("AKIASTK663DBYPX4K26W", "zQEM9Db8KDxd7Lef35A/y7MMkULrK6A9PP8DJ8S1");
-            var _s3Client = new AmazonS3Client(awsCredentials, RegionEndpoint.APSoutheast2);
-            var bucketExists = await AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, bucketName);
-
-            if (!bucketExists) return NotFound($"Bucket {bucketName} does not exist");
-
-            try
+        /*    [HttpPut("update")]
+            public async Task<IActionResult> UpdateFileByKeyAsync(IFormFile file,string key, string? prefix)
             {
-                var request = new PutObjectRequest()
+                string bucketName = "oxirgisi";
+                var awsCredentials = new BasicAWSCredentials("AKIASTK663DBYPX4K26W", "zQEM9Db8KDxd7Lef35A/y7MMkULrK6A9PP8DJ8S1");
+                var _s3Client = new AmazonS3Client(awsCredentials, RegionEndpoint.APSoutheast2);
+                var bucketExists = await AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, bucketName);
+            
+                if (!bucketExists) return NotFound($"Bucket {bucketName} does not exist");
+
+                try
                 {
-                    BucketName = bucketName,
-                    Key = key,
-                    InputStream = file.OpenReadStream(),
-                    ContentType = file.ContentType
-                };
+                    var request = new PutObjectRequest()
+                    {
+                        BucketName = bucketName,
+                        Key = string.IsNullOrEmpty(prefix) ? file.FileName : $"{prefix?.TrimEnd('/')}/{file.FileName}", // Faylni oldingi nomi bilan saqlash uchun key ni o'zgartirmang
+                        InputStream = file.OpenReadStream(),
+                        ContentType = file.ContentType
+                    };
 
-                await _s3Client.PutObjectAsync(request);
+                    await _s3Client.PutObjectAsync(request);
 
-                return Ok($"File {key} in bucket {bucketName} has been updated successfully!");
-            }
-            catch (AmazonS3Exception ex)
-            {
-                // Handle S3-specific exceptions here if needed
-                return BadRequest($"Error updating file: {ex.Message}");
-            }
-            catch (Exception ex)
-            {
-                // Handle other exceptions here if needed
-                return BadRequest($"Error updating file: {ex.Message}");
-            }
-        }
-
+                    return Ok($"File {key} in bucket {bucketName} has been updated successfully!");
+                }
+                catch (AmazonS3Exception ex)
+                {
+                    // Handle S3-specific exceptions here if needed
+                    return BadRequest($"Error updating file: {ex.Message}");
+                }
+                catch (Exception ex)
+                {
+                    // Handle other exceptions here if needed
+                    return BadRequest($"Error updating file: {ex.Message}");
+                }
+            }*/
     }
 }
