@@ -21,7 +21,7 @@ namespace S3.Amazon.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateBucketAsync(IFormFile file, string? prefix)
+        public async Task<IActionResult> CreateBucketAsync(string filePath, string contentType, string? prefix)
         {
             var awsCredentials = new BasicAWSCredentials("AKIASTK663DBYPX4K26W", "zQEM9Db8KDxd7Lef35A/y7MMkULrK6A9PP8DJ8S1");
             var _s3Client = new AmazonS3Client(awsCredentials, RegionEndpoint.APSoutheast2);
@@ -31,13 +31,15 @@ namespace S3.Amazon.Api.Controllers
             var request = new PutObjectRequest()
             {
                 BucketName = bucketName,
-                Key = string.IsNullOrEmpty(prefix) ? file.FileName : $"{prefix?.TrimEnd('/')}/{file.FileName}",
-                InputStream = file.OpenReadStream()
+                Key = string.IsNullOrEmpty(prefix) ? filePath : $"{prefix?.TrimEnd('/')}/{filePath}",
+                //InputStream = file.OpenReadStream()
+                FilePath = filePath,
+                ContentType = contentType,
             };
-            request.Metadata.Add("Content-Type", file.ContentType);
+            request.Metadata.Add("Content-Type", contentType);
             await _s3Client.PutObjectAsync(request);
 
-            return Ok($"File {prefix}/{file.FileName} uploaded to S3 successfully!");
+            return Ok($"File {prefix}/{filePath} uploaded to S3 successfully!");
         }
 
         [HttpGet]
